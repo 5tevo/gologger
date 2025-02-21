@@ -31,26 +31,26 @@ const (
 	ColorReset  = "\033[0m"
 )
 
-// green
-func (l *Logger) Success(msg string) {
+func (l *Logger) Success(format string, args ...interface{}) {
+	msg := fmt.Sprintf(format, args...)
 	timestamp := formatTime()
 	fmt.Printf("[%s %s  %s  %d] - %s%s%s\n", l.site, l.region, timestamp, l.rowIndex, ColorGreen, msg, ColorReset)
 }
 
-// red
-func (l *Logger) Error(msg string) {
+func (l *Logger) Error(format string, args ...interface{}) {
+	msg := fmt.Sprintf(format, args...)
 	timestamp := formatTime()
 	fmt.Printf("[%s %s  %s  %d] - %s%s%s\n", l.site, l.region, timestamp, l.rowIndex, ColorRed, msg, ColorReset)
 }
 
-// yellow
-func (l *Logger) Info(msg string) {
+func (l *Logger) Info(format string, args ...interface{}) {
+	msg := fmt.Sprintf(format, args...)
 	timestamp := formatTime()
 	fmt.Printf("[%s %s  %s  %d] - %s%s%s\n", l.site, l.region, timestamp, l.rowIndex, ColorYellow, msg, ColorReset)
 }
 
-// purple
-func (l *Logger) Normal(msg string) {
+func (l *Logger) Normal(format string, args ...interface{}) {
+	msg := fmt.Sprintf(format, args...)
 	timestamp := formatTime()
 	fmt.Printf("[%s %s  %s  %d] - %s%s%s\n", l.site, l.region, timestamp, l.rowIndex, ColorPurple, msg, ColorReset)
 }

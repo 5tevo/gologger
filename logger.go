@@ -63,7 +63,7 @@ func (l *Logger) logMessage(color, format string, args ...interface{}) {
 		combined = l.site + " " + l.region
 	}
 
-	fmt.Printf("[%s%-*s %s %*d] - %s%s%s\n",
+	fmt.Printf("%s[%-*s  %s  %*d] - %s%s%s\n",
 		color,
 		globalMaxSiteRegionWidth, combined,
 		timestamp,

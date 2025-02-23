@@ -1,1 +1,1 @@
-A simple Go logging system
+A simple Go logging system to sequentially log efficiently

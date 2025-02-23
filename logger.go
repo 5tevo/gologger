@@ -8,6 +8,18 @@ import (
 var globalMaxSiteRegionWidth int = 4
 var globalMaxRowIndexWidth int = 1
 
+var logChan = make(chan string, 10000)
+
+func init() {
+	go processLogMessages()
+}
+
+func processLogMessages() {
+	for msg := range logChan {
+		fmt.Print(msg)
+	}
+}
+
 type Logger struct {
 	site     string
 	region   string
@@ -63,13 +75,14 @@ func (l *Logger) logMessage(color, format string, args ...interface{}) {
 		combined = l.site + " " + l.region
 	}
 
-	fmt.Printf("%s[%-*s  %s  %*d] - %s%s%s\n",
+	logEntry := fmt.Sprintf("%s[%-*s  %s  %*d] - %s%s%s\n",
 		color,
 		globalMaxSiteRegionWidth, combined,
 		timestamp,
 		globalMaxRowIndexWidth, l.rowIndex,
 		message,
 		ColorReset,
-		"",
-	)
+		"")
+
+	logChan <- logEntry
 }

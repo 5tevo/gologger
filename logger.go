@@ -10,15 +10,19 @@ var globalMaxSiteRegionWidth int = 4
 var globalMaxRowIndexWidth int = 1
 
 var (
-	logChan    = make(chan string, 10000)
+	logChan    = make(chan string, 100000)
 	wg         sync.WaitGroup
 	shutdownMu sync.Mutex
 	shutdown   bool
 )
 
+const numWorkers = 4
+
 func init() {
-	wg.Add(1)
-	go processLogMessages()
+	for i := 0; i < numWorkers; i++ {
+		wg.Add(1)
+		go processLogMessages()
+	}
 }
 
 func processLogMessages() {
@@ -112,6 +116,6 @@ func Shutdown() {
 	shutdown = true
 	shutdownMu.Unlock()
 
-	wg.Wait()
 	close(logChan)
+	wg.Wait()
 }

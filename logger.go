@@ -2,19 +2,27 @@ package logger
 
 import (
 	"fmt"
+	"sync"
 	"time"
 )
 
 var globalMaxSiteRegionWidth int = 4
 var globalMaxRowIndexWidth int = 1
 
-var logChan = make(chan string, 10000)
+var (
+	logChan    = make(chan string, 10000)
+	wg         sync.WaitGroup
+	shutdownMu sync.Mutex
+	shutdown   bool
+)
 
 func init() {
+	wg.Add(1)
 	go processLogMessages()
 }
 
 func processLogMessages() {
+	defer wg.Done()
 	for msg := range logChan {
 		fmt.Print(msg)
 	}
@@ -68,6 +76,12 @@ func (l *Logger) Normal(format string, args ...interface{}) {
 }
 
 func (l *Logger) logMessage(color, format string, args ...interface{}) {
+	shutdownMu.Lock()
+	defer shutdownMu.Unlock()
+
+	if shutdown {
+		return
+	}
 	timestamp := formatTime()
 	message := fmt.Sprintf(format, args...)
 	combined := l.site
@@ -85,4 +99,19 @@ func (l *Logger) logMessage(color, format string, args ...interface{}) {
 		"")
 
 	logChan <- logEntry
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		logChan <- logEntry
+	}()
+}
+
+func Shutdown() {
+	shutdownMu.Lock()
+	shutdown = true
+	shutdownMu.Unlock()
+
+	wg.Wait()
+	close(logChan)
 }

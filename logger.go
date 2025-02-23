@@ -61,7 +61,6 @@ func InitializeLogger() {
 
 	logChan = make(chan string, 100000)
 
-	// Start worker pool
 	for i := 0; i < numWorkers; i++ {
 		wgWorkers.Add(1)
 		go func(workerID int) {
@@ -123,18 +122,6 @@ func (l *Logger) logMessage(color, format string, args ...interface{}) {
 	}(logEntry)
 }
 
-func startLogProcessor(workerCount int) {
-	for i := 0; i < workerCount; i++ {
-		wgWorkers.Add(1)
-		go func(workerID int) {
-			defer wgWorkers.Done()
-			for msg := range logChan {
-				fmt.Print(msg)
-			}
-		}(i)
-	}
-}
-
 func Shutdown() {
 	shutdownMu.Lock()
 	if shutdown {
@@ -152,8 +139,4 @@ func Shutdown() {
 	initMu.Lock()
 	defer initMu.Unlock()
 	initialized = false
-}
-
-func init() {
-	startLogProcessor(numWorkers)
 }

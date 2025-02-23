@@ -10,27 +10,13 @@ var globalMaxSiteRegionWidth int = 4
 var globalMaxRowIndexWidth int = 1
 
 var (
-	logChan    = make(chan string, 100000)
-	wg         sync.WaitGroup
-	shutdownMu sync.Mutex
-	shutdown   bool
+	logChan     = make(chan string, 100000)
+	wgWorkers   sync.WaitGroup
+	wgProducers sync.WaitGroup
+	shutdownMu  sync.Mutex
+	shutdown    bool
+	numWorkers  = 4
 )
-
-const numWorkers = 4
-
-func init() {
-	for i := 0; i < numWorkers; i++ {
-		wg.Add(1)
-		go processLogMessages()
-	}
-}
-
-func processLogMessages() {
-	defer wg.Done()
-	for msg := range logChan {
-		fmt.Print(msg)
-	}
-}
 
 type Logger struct {
 	site     string
@@ -81,11 +67,12 @@ func (l *Logger) Normal(format string, args ...interface{}) {
 
 func (l *Logger) logMessage(color, format string, args ...interface{}) {
 	shutdownMu.Lock()
-	defer shutdownMu.Unlock()
-
 	if shutdown {
+		shutdownMu.Unlock()
 		return
 	}
+	shutdownMu.Unlock()
+
 	timestamp := formatTime()
 	message := fmt.Sprintf(format, args...)
 	combined := l.site
@@ -102,13 +89,23 @@ func (l *Logger) logMessage(color, format string, args ...interface{}) {
 		ColorReset,
 		"")
 
-	logChan <- logEntry
+	wgProducers.Add(1)
+	go func(entry string) {
+		defer wgProducers.Done()
+		logChan <- entry
+	}(logEntry)
+}
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		logChan <- logEntry
-	}()
+func startLogProcessor(workerCount int) {
+	for i := 0; i < workerCount; i++ {
+		wgWorkers.Add(1)
+		go func(workerID int) {
+			defer wgWorkers.Done()
+			for msg := range logChan {
+				fmt.Print(msg)
+			}
+		}(i)
+	}
 }
 
 func Shutdown() {
@@ -116,6 +113,13 @@ func Shutdown() {
 	shutdown = true
 	shutdownMu.Unlock()
 
+	wgProducers.Wait()
+
 	close(logChan)
-	wg.Wait()
+
+	wgWorkers.Wait()
+}
+
+func init() {
+	startLogProcessor(numWorkers)
 }

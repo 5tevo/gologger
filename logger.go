@@ -10,12 +10,14 @@ var globalMaxSiteRegionWidth int = 4
 var globalMaxRowIndexWidth int = 1
 
 var (
-	logChan     = make(chan string, 100000)
+	logChan     chan string
 	wgWorkers   sync.WaitGroup
 	wgProducers sync.WaitGroup
 	shutdownMu  sync.Mutex
 	shutdown    bool
 	numWorkers  = 4
+	initialized bool
+	initMu      sync.Mutex
 )
 
 type Logger struct {
@@ -23,6 +25,14 @@ type Logger struct {
 	region   string
 	rowIndex int
 }
+
+const (
+	ColorGreen  = "\033[32m"
+	ColorRed    = "\033[31m"
+	ColorYellow = "\033[33m"
+	ColorPurple = "\033[35m"
+	ColorReset  = "\033[0m"
+)
 
 func SetGlobalWidths(siteRegionWidth, rowIndexWidth int) {
 	globalMaxSiteRegionWidth = siteRegionWidth
@@ -41,13 +51,30 @@ func formatTime() string {
 	return time.Now().Format("15:04:05.00")
 }
 
-const (
-	ColorGreen  = "\033[32m"
-	ColorRed    = "\033[31m"
-	ColorYellow = "\033[33m"
-	ColorPurple = "\033[35m"
-	ColorReset  = "\033[0m"
-)
+func InitializeLogger() {
+	initMu.Lock()
+	defer initMu.Unlock()
+
+	if initialized {
+		return
+	}
+
+	logChan = make(chan string, 100000)
+
+	// Start worker pool
+	for i := 0; i < numWorkers; i++ {
+		wgWorkers.Add(1)
+		go func(workerID int) {
+			defer wgWorkers.Done()
+			for msg := range logChan {
+				fmt.Print(msg)
+			}
+		}(i)
+	}
+
+	initialized = true
+	shutdown = false
+}
 
 func (l *Logger) Success(format string, args ...interface{}) {
 	l.logMessage(ColorGreen, format, args...)
@@ -110,6 +137,10 @@ func startLogProcessor(workerCount int) {
 
 func Shutdown() {
 	shutdownMu.Lock()
+	if shutdown {
+		shutdownMu.Unlock()
+		return
+	}
 	shutdown = true
 	shutdownMu.Unlock()
 
@@ -118,6 +149,9 @@ func Shutdown() {
 	close(logChan)
 
 	wgWorkers.Wait()
+	initMu.Lock()
+	defer initMu.Unlock()
+	initialized = false
 }
 
 func init() {

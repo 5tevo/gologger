@@ -27,11 +27,12 @@ type Logger struct {
 }
 
 const (
-	ColorGreen  = "\033[32m"
-	ColorRed    = "\033[31m"
-	ColorYellow = "\033[33m"
-	ColorPurple = "\033[35m"
-	ColorReset  = "\033[0m"
+	ColorGreen     = "\033[32m"
+	ColorRed       = "\033[31m"
+	ColorYellow    = "\033[33m"
+	ColorPurple    = "\033[35m"
+	ColorLightBlue = "\033[36m"
+	ColorReset     = "\033[0m"
 )
 
 func SetGlobalWidths(siteRegionWidth, rowIndexWidth int) {
@@ -89,6 +90,10 @@ func (l *Logger) Info(format string, args ...interface{}) {
 
 func (l *Logger) Normal(format string, args ...interface{}) {
 	l.logMessage(ColorPurple, format, args...)
+}
+
+func (l *Logger) Monitor(format string, args ...interface{}) {
+	l.logMessage(ColorLightBlue, format, args...)
 }
 
 func (l *Logger) logMessage(color, format string, args ...interface{}) {

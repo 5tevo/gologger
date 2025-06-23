@@ -32,6 +32,7 @@ const (
 	ColorYellow    = "\033[33m"
 	ColorPurple    = "\033[35m"
 	ColorLightBlue = "\033[36m"
+	ColorPink      = "\033[38;5;198m"
 	ColorReset     = "\033[0m"
 )
 
@@ -94,6 +95,10 @@ func (l *Logger) Normal(format string, args ...interface{}) {
 
 func (l *Logger) Monitor(format string, args ...interface{}) {
 	l.logMessage(ColorLightBlue, format, args...)
+}
+
+func (l *Logger) Important(format string, args ...interface{}) {
+	l.logMessage(ColorPink, format, args...)
 }
 
 func (l *Logger) logMessage(color, format string, args ...interface{}) {

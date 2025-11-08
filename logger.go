@@ -33,6 +33,7 @@ const (
 	ColorPurple    = "\033[35m"
 	ColorLightBlue = "\033[36m"
 	ColorPink      = "\033[38;5;198m"
+	ColorDarkBlue  = "\033[34m"
 	ColorReset     = "\033[0m"
 )
 
@@ -99,6 +100,10 @@ func (l *Logger) Monitor(format string, args ...interface{}) {
 
 func (l *Logger) Important(format string, args ...interface{}) {
 	l.logMessage(ColorPink, format, args...)
+}
+
+func (l *Logger) Captcha(format string, args ...interface{}) {
+	l.logMessage(ColorDarkBlue, format, args...)
 }
 
 func (l *Logger) logMessage(color, format string, args ...interface{}) {

@@ -52,10 +52,6 @@ func Setup(site, region string, rowIndex int) *Logger {
 	}
 }
 
-func formatTime() string {
-	return time.Now().Format("15:04:05.00")
-}
-
 func InitializeLogger() {
 	initMu.Lock()
 	defer initMu.Unlock()
@@ -109,7 +105,7 @@ func (l *Logger) Captcha(format string, args ...any) {
 }
 
 func (l *Logger) logMessage(color, format string, args ...any) {
-	timestamp := formatTime()
+	timestamp := time.Now().Format("15:04:05.00")
 	shutdownMu.Lock()
 	if shutdown {
 		shutdownMu.Unlock()

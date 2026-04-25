@@ -6,23 +6,22 @@ import (
 	"time"
 )
 
-var globalMaxSiteRegionWidth int = 4
-var globalMaxRowIndexWidth int = 1
-
 var (
-	logChan     chan string
-	wgWorkers   sync.WaitGroup
-	wgProducers sync.WaitGroup
-	shutdownMu  sync.Mutex
-	shutdown    bool
-	numWorkers  = 4
-	initialized bool
-	initMu      sync.Mutex
+	globalMaxSiteRegionWidth int = 4
+	globalMaxRowIndexWidth   int = 1
+	logChan                  chan string
+	wgWorkers                sync.WaitGroup
+	wgProducers              sync.WaitGroup
+	shutdownMu               sync.Mutex
+	shutdown                 bool
+	numWorkers               = 4
+	initialised              bool
+	initMu                   sync.Mutex
+	channelSize              = 100000
 )
 
 type Logger struct {
-	site     string
-	region   string
+	combined string
 	rowIndex int
 }
 
@@ -38,14 +37,17 @@ const (
 )
 
 func SetGlobalWidths(siteRegionWidth, rowIndexWidth int) {
-	globalMaxSiteRegionWidth = siteRegionWidth
-	globalMaxRowIndexWidth = rowIndexWidth
+	globalMaxSiteRegionWidth, globalMaxRowIndexWidth = siteRegionWidth, rowIndexWidth
 }
 
 func Setup(site, region string, rowIndex int) *Logger {
+	combined := site
+	if region != "" {
+		combined = site + " " + region
+	}
+
 	return &Logger{
-		site:     site,
-		region:   region,
+		combined: combined,
 		rowIndex: rowIndex,
 	}
 }
@@ -58,13 +60,13 @@ func InitializeLogger() {
 	initMu.Lock()
 	defer initMu.Unlock()
 
-	if initialized {
+	if initialised {
 		return
 	}
 
-	logChan = make(chan string, 100000)
+	logChan = make(chan string, channelSize)
 
-	for i := 0; i < numWorkers; i++ {
+	for i := range numWorkers {
 		wgWorkers.Add(1)
 		go func(workerID int) {
 			defer wgWorkers.Done()
@@ -74,67 +76,60 @@ func InitializeLogger() {
 		}(i)
 	}
 
-	initialized = true
+	initialised = true
 	shutdown = false
 }
 
-func (l *Logger) Success(format string, args ...interface{}) {
+func (l *Logger) Success(format string, args ...any) {
 	l.logMessage(ColorGreen, format, args...)
 }
 
-func (l *Logger) Error(format string, args ...interface{}) {
+func (l *Logger) Error(format string, args ...any) {
 	l.logMessage(ColorRed, format, args...)
 }
 
-func (l *Logger) Info(format string, args ...interface{}) {
+func (l *Logger) Info(format string, args ...any) {
 	l.logMessage(ColorYellow, format, args...)
 }
 
-func (l *Logger) Normal(format string, args ...interface{}) {
+func (l *Logger) Normal(format string, args ...any) {
 	l.logMessage(ColorPurple, format, args...)
 }
 
-func (l *Logger) Monitor(format string, args ...interface{}) {
+func (l *Logger) Monitor(format string, args ...any) {
 	l.logMessage(ColorLightBlue, format, args...)
 }
 
-func (l *Logger) Important(format string, args ...interface{}) {
+func (l *Logger) Important(format string, args ...any) {
 	l.logMessage(ColorPink, format, args...)
 }
 
-func (l *Logger) Captcha(format string, args ...interface{}) {
+func (l *Logger) Captcha(format string, args ...any) {
 	l.logMessage(ColorDarkBlue, format, args...)
 }
 
-func (l *Logger) logMessage(color, format string, args ...interface{}) {
+func (l *Logger) logMessage(color, format string, args ...any) {
+	timestamp := formatTime()
 	shutdownMu.Lock()
 	if shutdown {
 		shutdownMu.Unlock()
 		return
 	}
+	wgProducers.Add(1)
 	shutdownMu.Unlock()
 
-	timestamp := formatTime()
 	message := fmt.Sprintf(format, args...)
-	combined := l.site
-	if l.region != "" {
-		combined = l.site + " " + l.region
-	}
 
-	logEntry := fmt.Sprintf("%s[%-*s  %s  %*d] - %s%s%s\n",
+	logEntry := fmt.Sprintf("%s[%-*s  %s  %*d] - %s%s\n",
 		color,
-		globalMaxSiteRegionWidth, combined,
+		globalMaxSiteRegionWidth, l.combined,
 		timestamp,
 		globalMaxRowIndexWidth, l.rowIndex,
 		message,
-		ColorReset,
-		"")
+		ColorReset)
 
-	wgProducers.Add(1)
-	go func(entry string) {
-		defer wgProducers.Done()
-		logChan <- entry
-	}(logEntry)
+	logChan <- logEntry
+	wgProducers.Done()
 }
 
 func Shutdown() {
@@ -153,5 +148,5 @@ func Shutdown() {
 	wgWorkers.Wait()
 	initMu.Lock()
 	defer initMu.Unlock()
-	initialized = false
+	initialised = false
 }
